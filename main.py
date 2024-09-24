@@ -33,7 +33,7 @@ def detect_objects(image):
             scores = detection[5:]
             class_id = np.argmax(scores)
             confidence = scores[class_id]
-            if confidence > 0.5:
+            if confidence > 0.7: #configurar precisão
                 center_x = int(detection[0] * width)
                 center_y = int(detection[1] * height)
                 w = int(detection[2] * width)
@@ -45,8 +45,8 @@ def detect_objects(image):
                 class_ids.append(class_id)
                 
                 # Incrementar a contagem da classe detectada
-                class_counts[class_names[class_id]] += 1
-
+                # class_counts[class_names[class_id]] += 1
+                
     # indices = cv2.dnn.NMSBoxes(boxes, confidences, 0.5, 0.4)
     # for i in indices:
     #     i = i[0]
@@ -57,44 +57,90 @@ def detect_objects(image):
     #     cv2.putText(image, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
 
-
+    # Aplicar Non-Maximum Suppression (NMS) para eliminar sobreposições
     indices = cv2.dnn.NMSBoxes(boxes, confidences, 0.5, 0.4)
-    for i in indices:
-        box = boxes[i]  # Acessa o box correspondente ao índice `i`
-        x, y, w, h = box[0], box[1], box[2], box[3]
-        label = str(classes[class_ids[i]])
-        
-        confidence = confidences[i]
-        
-        # Desenhar o retângulo da caixa delimitadora
-        cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        
-        # Texto do rótulo com a classe e a confiança (precisão) em porcentagem
-        label_with_confidence = f"{label} {confidence * 100:.2f}%"
-        
-        # Adicionar o texto da precisão
-        cv2.putText(image, label_with_confidence, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+    # Verificar se há detecções após o NMS
+    if len(indices) > 0:
+        indices = indices.flatten() # Usar flatten() se o NMS retornou alguma caixa
+        for i in indices.flatten():
+            box = boxes[i]
+            x, y, w, h = box
+            label = str(class_names[class_ids[i]])
+            
+            confidence = confidences[i]
+            
+            # Desenhar o retângulo da caixa delimitadora
+            cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            
+            # Texto do rótulo com a classe e a confiança (precisão) em porcentagem
+            label_with_confidence = f"{label} {confidence * 100:.2f}%"
+            
+            # Adicionar o texto da precisão
+            cv2.putText(image, label_with_confidence, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+            
+            # Incrementar a contagem da classe correspondente
+            class_counts[label] += 1
 
     return image, class_counts
 
-st.title("YOLOv4 Custom Object Detection")
+# Função para iniciar a câmera e fazer a detecção em tempo real
+def detect_from_camera():
+    cap = cv2.VideoCapture(0)  # Abre a câmera do notebook
 
-# Carregar a imagem
-uploaded_file = st.file_uploader("Escolha uma imagem...", type=["jpg", "jpeg", "png"])
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("Não foi possível acessar a câmera.")
+            break
 
-if uploaded_file is not None:
-    file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
-    image = cv2.imdecode(file_bytes, 1)
+        # Fazer a detecção de objetos no frame capturado
+        result_frame, class_counts = detect_objects(frame)
 
-    # Detecção de objetos
-    result_image, class_counts = detect_objects(image)
+        # Exibir o frame com as detecções
+        cv2.imshow('Detecção em Tempo Real', result_frame)
 
-    # Converter de BGR para RGB
-    result_image_rgb = cv2.cvtColor(result_image, cv2.COLOR_BGR2RGB)
+        # Fechar com a tecla 'q'
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
-    # Exibir a imagem com as detecções
-    st.image(result_image, channels="BGR", use_column_width=True)
+    cap.release()
+    cv2.destroyAllWindows()
+
+
+
+
+# Função principal para o Streamlit
+def main():
+    st.title("YOLOv4 Custom Object Detection")
+
+    # Adicionar opção para escolher entre imagem ou câmera ao vivo
+    option = st.selectbox('Escolha a entrada para detecção', ('Imagem', 'Câmera ao vivo'))
+
+    if option == 'Imagem':    
+        # Carregar a imagem
+        uploaded_file = st.file_uploader("Escolha uma imagem...", type=["jpg", "jpeg", "png"])
+
+        if uploaded_file is not None:
+            file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
+            image = cv2.imdecode(file_bytes, 1)
+
+            # Detecção de objetos
+            result_image, class_counts = detect_objects(image)
+
+            # Converter de BGR para RGB
+            result_image_rgb = cv2.cvtColor(result_image, cv2.COLOR_BGR2RGB)
+
+            # Exibir a imagem com as detecções
+            st.image(result_image, channels="BGR", use_column_width=True)
+            
+            # Exibir contagem das classes
+            st.write("Contagem de Classes:")
+            st.json(class_counts)  # Exibir as contagens em formato JSON
     
-    # Exibir contagem das classes
-    st.write("Contagem de Classes:")
-    st.json(class_counts)  # Exibir as contagens em formato JSON
+    elif option == 'Câmera ao vivo':
+        st.write("A detecção ao vivo será iniciada em uma nova janela. Pressione 'q' para sair.")
+        if st.button('Iniciar Detecção ao Vivo'):
+            detect_from_camera()
+
+if __name__ == '__main__':
+    main()
