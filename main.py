@@ -1,11 +1,35 @@
 import streamlit as st
 import cv2
 import numpy as np
+import os
+import gdown
+
 from streamlit_webrtc import VideoProcessorBase, webrtc_streamer
 from utils import load_class_names
 
+
+# Função para baixar o arquivo de pesos do Google Drive
+def download_weights_from_drive(drive_file_id, destination):
+    # URL do arquivo no Google Drive
+    drive_url = f'https://drive.google.com/uc?id={drive_file_id}'
+    
+    # Verificar se o arquivo já foi baixado
+    if not os.path.exists(destination):
+        print("Baixando os pesos do Google Drive...")
+        gdown.download(drive_url, destination, quiet=False)
+        print("Download concluído.")
+    else:
+        print("Pesos já estão disponíveis localmente.")
+
+# ID do arquivo no Google Drive
+file_id = '1-1dUAZJB7yji54y3R9BCL0_DafYKfQTr'  # Substitua pelo seu ID real
+destination = 'config_yolo/yolov4_custom_last.weights'
+
+# Baixar os pesos do Google Drive
+download_weights_from_drive(file_id, destination)
+
 # Carregar a rede YOLOv4 personalizada
-net = cv2.dnn.readNet('config_yolo/yolov4_custom_last.weights', 'config_yolo/yolov4_custom.cfg')
+net = cv2.dnn.readNet(destination, 'config_yolo/yolov4_custom.cfg')
 layer_names = net.getLayerNames()
 output_layers = [layer_names[i - 1] for i in net.getUnconnectedOutLayers()]
 
