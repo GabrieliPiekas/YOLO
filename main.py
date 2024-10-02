@@ -1,7 +1,8 @@
 import streamlit as st
 import cv2
 import numpy as np
-from utils import load_class_names 
+from streamlit_webrtc import VideoProcessorBase, webrtc_streamer
+from utils import load_class_names
 
 # Carregar a rede YOLOv4 personalizada
 net = cv2.dnn.readNet('config_yolo/yolov4_custom_last.weights', 'config_yolo/yolov4_custom.cfg')
@@ -9,10 +10,6 @@ layer_names = net.getLayerNames()
 output_layers = [layer_names[i - 1] for i in net.getUnconnectedOutLayers()]
 
 # Carregar as classes personalizadas
-with open('config_yolo/obj.names', 'r') as f:
-    classes = [line.strip() for line in f.readlines()]
-    
-    
 class_names = load_class_names("config_yolo/obj.names")
 
 # Função para processar a imagem
@@ -33,7 +30,7 @@ def detect_objects(image):
             scores = detection[5:]
             class_id = np.argmax(scores)
             confidence = scores[class_id]
-            if confidence > 0.7: #configurar precisão
+            if confidence > 0.7:  # Configurar precisão
                 center_x = int(detection[0] * width)
                 center_y = int(detection[1] * height)
                 w = int(detection[2] * width)
@@ -43,30 +40,14 @@ def detect_objects(image):
                 boxes.append([x, y, w, h])
                 confidences.append(float(confidence))
                 class_ids.append(class_id)
-                
-                # Incrementar a contagem da classe detectada
-                # class_counts[class_names[class_id]] += 1
-                
-    # indices = cv2.dnn.NMSBoxes(boxes, confidences, 0.5, 0.4)
-    # for i in indices:
-    #     i = i[0]
-    #     box = boxes[i]
-    #     x, y, w, h = box[0], box[1], box[2], box[3]
-    #     label = str(classes[class_ids[i]])
-    #     cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
-    #     cv2.putText(image, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-
-
-    # Aplicar Non-Maximum Suppression (NMS) para eliminar sobreposições
+    
     indices = cv2.dnn.NMSBoxes(boxes, confidences, 0.5, 0.4)
-    # Verificar se há detecções após o NMS
     if len(indices) > 0:
-        indices = indices.flatten() # Usar flatten() se o NMS retornou alguma caixa
-        for i in indices.flatten():
+        indices = indices.flatten()
+        for i in indices:
             box = boxes[i]
             x, y, w, h = box
             label = str(class_names[class_ids[i]])
-            
             confidence = confidences[i]
             
             # Desenhar o retângulo da caixa delimitadora
@@ -83,31 +64,19 @@ def detect_objects(image):
 
     return image, class_counts
 
-# Função para iniciar a câmera e fazer a detecção em tempo real
-def detect_from_camera():
-    cap = cv2.VideoCapture(0)  # Abre a câmera do notebook
+# Classe do processador de vídeo
+class VideoProcessor(VideoProcessorBase):
+    def __init__(self):
+        self.class_counts = {}
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            print("Não foi possível acessar a câmera.")
-            break
-
-        # Fazer a detecção de objetos no frame capturado
-        result_frame, class_counts = detect_objects(frame)
-
-        # Exibir o frame com as detecções
-        cv2.imshow('Detecção em Tempo Real', result_frame)
-
-        # Fechar com a tecla 'q'
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-
-    cap.release()
-    cv2.destroyAllWindows()
-
-
-
+    def recv(self, frame):
+        img = frame.to_ndarray(format="bgr24")
+        
+        # Fazer a detecção de objetos
+        result_frame, class_counts = detect_objects(img)
+        self.class_counts = class_counts
+        
+        return av.VideoFrame.from_ndarray(result_frame, format="bgr24")
 
 # Função principal para o Streamlit
 def main():
@@ -131,16 +100,23 @@ def main():
             result_image_rgb = cv2.cvtColor(result_image, cv2.COLOR_BGR2RGB)
 
             # Exibir a imagem com as detecções
-            st.image(result_image, channels="BGR", use_column_width=True)
+            st.image(result_image_rgb, channels="RGB", use_column_width=True)
             
             # Exibir contagem das classes
             st.write("Contagem de Classes:")
             st.json(class_counts)  # Exibir as contagens em formato JSON
-    
+
     elif option == 'Câmera ao vivo':
-        st.write("A detecção ao vivo será iniciada em uma nova janela. Pressione 'q' para sair.")
-        if st.button('Iniciar Detecção ao Vivo'):
-            detect_from_camera()
+        st.write("A detecção ao vivo será exibida abaixo.")
+        webrtc_ctx = webrtc_streamer(
+            key="detector",
+            video_processor_factory=VideoProcessor,
+            media_stream_constraints={"video": True, "audio": False},
+            async_processing=True,
+        )
+
+        if webrtc_ctx.video_processor:
+            st.write("Contagem de Classes Detectadas:", webrtc_ctx.video_processor.class_counts)
 
 if __name__ == '__main__':
     main()
