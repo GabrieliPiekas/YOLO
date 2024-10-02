@@ -2,6 +2,7 @@ import streamlit as st
 import cv2
 import numpy as np
 from streamlit_webrtc import VideoProcessorBase, webrtc_streamer
+import av  # Importar a biblioteca av
 from utils import load_class_names
 
 # Carregar a rede YOLOv4 personalizada

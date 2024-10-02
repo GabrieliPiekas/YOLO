@@ -4,3 +4,4 @@ numpy
 gdown
 streamlit-webrtc
 aioice
+av
