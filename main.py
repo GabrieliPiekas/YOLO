@@ -20,16 +20,27 @@ def download_weights_from_drive(drive_file_id, destination):
         print("Download concluído.")
     else:
         print("Pesos já estão disponíveis localmente.")
-
+ 
 # ID do arquivo no Google Drive
 file_id = '1-1dUAZJB7yji54y3R9BCL0_DafYKfQTr'  # Substitua pelo seu ID real
-destination = 'config_yolo/yolov4_custom_last.weights'
+destination = 'config_yolo/yolov4_custom_best.weights'
+        
+# URL do arquivo .cfg no Google Drive
+cfg_url = "https://drive.google.com/18uCxw2Z7fajZ1e2ztOrDTvsM9s4OpDN-O"
+
+# Caminho onde o arquivo será salvo
+cfg_path = "config_yolo/yolov4_custom.cfg"
+
+# Verifica se o arquivo já existe antes de baixar
+if not os.path.exists(cfg_path):
+    gdown.download(cfg_url, cfg_path, quiet=False)
+
 
 # Baixar os pesos do Google Drive
 download_weights_from_drive(file_id, destination)
 
 # Carregar a rede YOLOv4 personalizada
-net = cv2.dnn.readNet(destination, 'config_yolo/yolov4_custom.cfg')
+net = cv2.dnn.readNet(destination, cfg_url)
 layer_names = net.getLayerNames()
 output_layers = [layer_names[i - 1] for i in net.getUnconnectedOutLayers()]
 
