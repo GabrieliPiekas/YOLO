@@ -2,5 +2,5 @@ streamlit
 opencv-python-headless
 numpy
 gdown
-streamlit-webrtc==0.35.0
-aioice==0.7.6
+streamlit-webrtc
+aioice
