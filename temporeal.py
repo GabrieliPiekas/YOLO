@@ -113,11 +113,12 @@ def main():
             key="detector",
             video_processor_factory=VideoProcessor,
             media_stream_constraints={"video": True, "audio": False},
-            async_processing=True,
+            async_processing=False,  # Alterado para False
         )
 
         if webrtc_ctx.video_processor:
             st.write("Contagem de Classes Detectadas:", webrtc_ctx.video_processor.class_counts)
 
 if __name__ == '__main__':
-    main()
+    import asyncio
+    asyncio.run(main())  # Usando asyncio para inicializar a função principal
