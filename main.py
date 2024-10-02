@@ -1,7 +1,7 @@
 import streamlit as st
 import cv2
 import numpy as np
-from streamlit_webrtc import VideoProcessorBase, webrtc_streamer
+# from streamlit_webrtc import VideoProcessorBase, webrtc_streamer
 from utils import load_class_names
 
 # Carregar a rede YOLOv4 personalizada
@@ -64,19 +64,62 @@ def detect_objects(image):
 
     return image, class_counts
 
-# Classe do processador de vídeo
-class VideoProcessor(VideoProcessorBase):
-    def __init__(self):
-        self.class_counts = {}
+# # Classe do processador de vídeo
+# class VideoProcessor(VideoProcessorBase):
+#     def __init__(self):
+#         self.class_counts = {}
 
-    def recv(self, frame):
-        img = frame.to_ndarray(format="bgr24")
+#     def recv(self, frame):
+#         img = frame.to_ndarray(format="bgr24")
         
-        # Fazer a detecção de objetos
-        result_frame, class_counts = detect_objects(img)
-        self.class_counts = class_counts
+#         # Fazer a detecção de objetos
+#         result_frame, class_counts = detect_objects(img)
+#         self.class_counts = class_counts
         
-        return av.VideoFrame.from_ndarray(result_frame, format="bgr24")
+#         return av.VideoFrame.from_ndarray(result_frame, format="bgr24")
+
+# # Função principal para o Streamlit
+# def main():
+#     st.title("YOLOv4 Custom Object Detection")
+
+#     # Adicionar opção para escolher entre imagem ou câmera ao vivo
+#     option = st.selectbox('Escolha a entrada para detecção', ('Imagem', 'Câmera ao vivo'))
+
+#     if option == 'Imagem':    
+#         # Carregar a imagem
+#         uploaded_file = st.file_uploader("Escolha uma imagem...", type=["jpg", "jpeg", "png"])
+
+#         if uploaded_file is not None:
+#             file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
+#             image = cv2.imdecode(file_bytes, 1)
+
+#             # Detecção de objetos
+#             result_image, class_counts = detect_objects(image)
+
+#             # Converter de BGR para RGB
+#             result_image_rgb = cv2.cvtColor(result_image, cv2.COLOR_BGR2RGB)
+
+#             # Exibir a imagem com as detecções
+#             st.image(result_image_rgb, channels="RGB", use_column_width=True)
+            
+#             # Exibir contagem das classes
+#             st.write("Contagem de Classes:")
+#             st.json(class_counts)  # Exibir as contagens em formato JSON
+
+#     elif option == 'Câmera ao vivo':
+#         st.write("A detecção ao vivo será exibida abaixo.")
+#         webrtc_ctx = webrtc_streamer(
+#             key="detector",
+#             video_processor_factory=VideoProcessor,
+#             media_stream_constraints={"video": True, "audio": False},
+#             async_processing=True,
+#         )
+
+#         if webrtc_ctx.video_processor:
+#             st.write("Contagem de Classes Detectadas:", webrtc_ctx.video_processor.class_counts)
+
+# if __name__ == '__main__':
+#    main()
 
 # Função principal para o Streamlit
 def main():
@@ -108,15 +151,33 @@ def main():
 
     elif option == 'Câmera ao vivo':
         st.write("A detecção ao vivo será exibida abaixo.")
-        webrtc_ctx = webrtc_streamer(
-            key="detector",
-            video_processor_factory=VideoProcessor,
-            media_stream_constraints={"video": True, "audio": False},
-            async_processing=True,
-        )
 
-        if webrtc_ctx.video_processor:
-            st.write("Contagem de Classes Detectadas:", webrtc_ctx.video_processor.class_counts)
+        # Captura de vídeo ao vivo via OpenCV
+        cap = cv2.VideoCapture(0)  # 0 para a câmera padrão
+
+        if not cap.isOpened():
+            st.error("Erro ao acessar a câmera.")
+        else:
+            stframe = st.empty()  # Placeholder para exibir os frames
+
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                # Fazer a detecção de objetos
+                result_frame, class_counts = detect_objects(frame)
+
+                # Converter de BGR para RGB
+                result_frame_rgb = cv2.cvtColor(result_frame, cv2.COLOR_BGR2RGB)
+
+                # Exibir o frame no Streamlit
+                stframe.image(result_frame_rgb, channels="RGB", use_column_width=True)
+
+                # Exibir a contagem das classes
+                st.write("Contagem de Classes Detectadas:", class_counts)
+
+        cap.release()
 
 if __name__ == '__main__':
     main()
