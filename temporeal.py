@@ -54,7 +54,7 @@ run_camera = st.checkbox('Iniciar câmera')
 
 if run_camera:
     # Inicializar captura de vídeo
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
 
     # Checar se a câmera está aberta
     if not cap.isOpened():
