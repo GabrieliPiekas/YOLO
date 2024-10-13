@@ -6,7 +6,7 @@ import av
 from utils import load_class_names
 
 # Carregar a rede YOLOv4 personalizada
-net = cv2.dnn.readNet('config_yolo/yolov4_custom_last.weights', 'config_yolo/yolov4_custom.cfg')
+net = cv2.dnn.readNet('config_yolo/yolov4_custom_best.weights', 'config_yolo/yolov4_custom.cfg')
 layer_names = net.getLayerNames()
 output_layers = [layer_names[i - 1] for i in net.getUnconnectedOutLayers()]
 
