@@ -8,9 +8,9 @@ from ultralytics import YOLO
 from PIL import Image
 
 # Carregar a rede YOLOv4 personalizada
-net = cv2.dnn.readNet('config_yolo/yolov4_custom_best.weights', 'config_yolo/yolov4_custom.cfg')
-layer_names = net.getLayerNames()
-output_layers = [layer_names[i - 1] for i in net.getUnconnectedOutLayers()]
+# net = cv2.dnn.readNet('config_yolo/yolov4_custom_best.weights', 'config_yolo/yolov4_custom.cfg')
+# layer_names = net.getLayerNames()
+# output_layers = [layer_names[i - 1] for i in net.getUnconnectedOutLayers()]
 
 # Carregar as classes personalizadas
 class_names = load_class_names("config_yolo/obj.names")
@@ -18,54 +18,54 @@ class_names = load_class_names("config_yolo/obj.names")
 # Carregar o modelo YOLOv8
 model = YOLO("config_yolo/best.pt")
 
-def detect_objects_yolov4(image):
-    height, width = image.shape[:2]
-    blob = cv2.dnn.blobFromImage(image, 0.00392, (416, 416), (0, 0, 0), True, crop=False)
-    net.setInput(blob)
-    outs = net.forward(output_layers)
+# def detect_objects_yolov4(image):
+#     height, width = image.shape[:2]
+#     blob = cv2.dnn.blobFromImage(image, 0.00392, (416, 416), (0, 0, 0), True, crop=False)
+#     net.setInput(blob)
+#     outs = net.forward(output_layers)
     
-    class_ids = []
-    confidences = []
-    boxes = []
+#     class_ids = []
+#     confidences = []
+#     boxes = []
 
-    # Dicionário para contar as classes detectadas
-    class_counts = {class_name: 0 for class_name in class_names}
+#     # Dicionário para contar as classes detectadas
+#     class_counts = {class_name: 0 for class_name in class_names}
 
-    for out in outs:
-        for detection in out:
-            scores = detection[5:]
-            class_id = np.argmax(scores)
-            confidence = scores[class_id]
-            if confidence > 0.5:
-                center_x = int(detection[0] * width)
-                center_y = int(detection[1] * height)
-                w = int(detection[2] * width)
-                h = int(detection[3] * height)
-                x = int(center_x - w / 2)
-                y = int(center_y - h / 2)
+#     for out in outs:
+#         for detection in out:
+#             scores = detection[5:]
+#             class_id = np.argmax(scores)
+#             confidence = scores[class_id]
+#             if confidence > 0.5:
+#                 center_x = int(detection[0] * width)
+#                 center_y = int(detection[1] * height)
+#                 w = int(detection[2] * width)
+#                 h = int(detection[3] * height)
+#                 x = int(center_x - w / 2)
+#                 y = int(center_y - h / 2)
                 
-                boxes.append([x, y, w, h])
-                confidences.append(float(confidence))
-                class_ids.append(class_id)
+#                 boxes.append([x, y, w, h])
+#                 confidences.append(float(confidence))
+#                 class_ids.append(class_id)
 
-    # Aplicar Non-Maximum Suppression
-    indices = cv2.dnn.NMSBoxes(boxes, confidences, 0.5, 0.4)
-    if len(indices) > 0:
-        indices = indices.flatten()
-        for i in indices:
-            box = boxes[i]
-            x, y, w, h = box
-            label = str(class_names[class_ids[i]])
-            confidence = confidences[i]
+#     # Aplicar Non-Maximum Suppression
+#     indices = cv2.dnn.NMSBoxes(boxes, confidences, 0.5, 0.4)
+#     if len(indices) > 0:
+#         indices = indices.flatten()
+#         for i in indices:
+#             box = boxes[i]
+#             x, y, w, h = box
+#             label = str(class_names[class_ids[i]])
+#             confidence = confidences[i]
 
-            cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
-            label_with_confidence = f"{label} {confidence * 100:.2f}%"
-            cv2.putText(image, label_with_confidence, (x, y - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+#             cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 2)
+#             label_with_confidence = f"{label} {confidence * 100:.2f}%"
+#             cv2.putText(image, label_with_confidence, (x, y - 10),
+#                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
 
-            class_counts[label] += 1
+#             class_counts[label] += 1
 
-    return image, class_counts
+#     return image, class_counts
 
 def detect_objects_yolov8(image):
     # Fazer a detecção
@@ -103,9 +103,9 @@ class VideoProcessor(VideoProcessorBase):
     def recv(self, frame):
         img = frame.to_ndarray(format="bgr24")
 
-        if self.detection_method == "YOLOv4":
-            result_frame, class_counts = detect_objects_yolov4(img)
-        else:
+        if self.detection_method == "YOLOv8":
+            # result_frame, class_counts = detect_objects_yolov4(img)
+        #else:
             result_frame, class_counts = detect_objects_yolov8(img)
 
         self.class_counts = class_counts
@@ -117,7 +117,7 @@ def main():
     st.title("YOLO Custom Object Detection")
 
     # Adicionar opção para escolher entre YOLOv4 e YOLOv8
-    yolo_version = st.selectbox('Escolha a versão do YOLO para detecção', ('YOLOv4', 'YOLOv8'))
+    yolo_version = st.selectbox('Escolha a versão do YOLO para detecção', ('YOLOv8'))
 
     # Adicionar opção para escolher entre imagem ou câmera ao vivo
     option = st.selectbox('Escolha a entrada para detecção', ('Imagem', 'Câmera ao vivo'))
@@ -129,9 +129,9 @@ def main():
             file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
             image = cv2.imdecode(file_bytes, 1)
 
-            if yolo_version == 'YOLOv4':
-                result_image, class_counts = detect_objects_yolov4(image)
-            else:
+            if yolo_version == 'YOLOv8':
+               # result_image, class_counts = detect_objects_yolov4(image)
+           # else:
                 result_image, class_counts = detect_objects_yolov8(image)
 
             result_image_rgb = cv2.cvtColor(result_image, cv2.COLOR_BGR2RGB)
